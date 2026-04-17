@@ -1,1 +1,572 @@
+import { useRef, useEffect, useCallback, useState } from "react";
 
+/*
+  ASCII Matrix Earth v4 — High-res land detection
+  Uses ~300 geographic rectangles tiled to closely approximate real coastlines.
+  Every major peninsula, island, and coastal feature is represented.
+*/
+
+function isLand(lt, ln) {
+  // ── NORTH AMERICA ──
+  // Alaska
+  if (lt>68&&lt<72&&ln>-168&&ln<-142) return true;
+  if (lt>64&&lt<70&&ln>-168&&ln<-145) return true;
+  if (lt>60&&lt<66&&ln>-166&&ln<-144) return true;
+  if (lt>58&&lt<62&&ln>-162&&ln<-148) return true;
+  if (lt>55&&lt<62&&ln>-170&&ln<-158) return true;
+  if (lt>54&&lt<60&&ln>-140&&ln<-130) return true;
+
+  // Northern Canada + Arctic islands
+  if (lt>72&&lt<76&&ln>-125&&ln<-72) return true;
+  if (lt>68&&lt<74&&ln>-120&&ln<-85) return true;
+  if (lt>76&&lt<80&&ln>-105&&ln<-75) return true;
+  if (lt>74&&lt<78&&ln>-100&&ln<-80) return true;
+  if (lt>64&&lt<72&&ln>-95&&ln<-70) return true;
+  if (lt>60&&lt<68&&ln>-82&&ln<-60) return true;
+
+  // Western Canada
+  if (lt>54&&lt<62&&ln>-130&&ln<-110) return true;
+  if (lt>50&&lt<56&&ln>-128&&ln<-110) return true;
+  if (lt>48&&lt<52&&ln>-128&&ln<-112) return true;
+
+  // Central Canada / prairies
+  if (lt>50&&lt<62&&ln>-110&&ln<-85) return true;
+
+  // Eastern Canada
+  if (lt>50&&lt<60&&ln>-85&&ln<-60) return true;
+  if (lt>46&&lt<52&&ln>-80&&ln<-56) return true;
+  if (lt>44&&lt<48&&ln>-68&&ln<-52) return true;
+
+  // Pacific NW US
+  if (lt>45&&lt<50&&ln>-126&&ln<-116) return true;
+  if (lt>42&&lt<48&&ln>-124&&ln<-116) return true;
+
+  // Northern US
+  if (lt>44&&lt<50&&ln>-116&&ln<-82) return true;
+  if (lt>40&&lt<46&&ln>-82&&ln<-72) return true;
+
+  // Western US
+  if (lt>38&&lt<46&&ln>-124&&ln<-104) return true;
+  if (lt>34&&lt<40&&ln>-122&&ln<-104) return true;
+  if (lt>32&&lt<36&&ln>-120&&ln<-104) return true;
+
+  // Central US
+  if (lt>34&&lt<44&&ln>-104&&ln<-82) return true;
+  if (lt>30&&lt<36&&ln>-104&&ln<-82) return true;
+
+  // Eastern US
+  if (lt>38&&lt<46&&ln>-82&&ln<-70) return true;
+  if (lt>34&&lt<40&&ln>-82&&ln<-74) return true;
+  if (lt>30&&lt<36&&ln>-88&&ln<-76) return true;
+
+  // Florida
+  if (lt>28&&lt<32&&ln>-88&&ln<-80) return true;
+  if (lt>24&&lt<28&&ln>-82&&ln<-80) return true;
+
+  // US Gulf Coast
+  if (lt>28&&lt<32&&ln>-98&&ln<-88) return true;
+
+  // Baja California
+  if (lt>28&&lt<32&&ln>-117&&ln<-112) return true;
+  if (lt>23&&lt<28&&ln>-115&&ln<-109) return true;
+
+  // Mexico
+  if (lt>24&&lt<32&&ln>-112&&ln<-98) return true;
+  if (lt>18&&lt<26&&ln>-106&&ln<-96) return true;
+  if (lt>16&&lt<22&&ln>-100&&ln<-88) return true;
+  if (lt>18&&lt<22&&ln>-92&&ln<-86) return true;
+
+  // Central America
+  if (lt>14&&lt<18&&ln>-92&&ln<-84) return true;
+  if (lt>10&&lt<16&&ln>-88&&ln<-82) return true;
+  if (lt>8&&lt<12&&ln>-84&&ln<-77) return true;
+
+  // Caribbean
+  if (lt>19&&lt<24&&ln>-84&&ln<-74) return true;
+  if (lt>18&&lt<20&&ln>-74&&ln<-68) return true;
+  if (lt>17&&lt<19&&ln>-67&&ln<-65) return true;
+
+  // ── GREENLAND ──
+  if (lt>78&&lt<84&&ln>-60&&ln<-20) return true;
+  if (lt>72&&lt<80&&ln>-62&&ln<-16) return true;
+  if (lt>68&&lt<74&&ln>-56&&ln<-20) return true;
+  if (lt>64&&lt<70&&ln>-52&&ln<-28) return true;
+  if (lt>60&&lt<66&&ln>-50&&ln<-42) return true;
+
+  // ── SOUTH AMERICA ──
+  if (lt>6&&lt<12&&ln>-78&&ln<-68) return true;
+  if (lt>4&&lt<12&&ln>-68&&ln<-60) return true;
+  if (lt>6&&lt<12&&ln>-60&&ln<-56) return true;
+
+  if (lt>-2&&lt<6&&ln>-80&&ln<-76) return true;
+  if (lt>-6&&lt<0&&ln>-78&&ln<-74) return true;
+  if (lt>-16&&lt<-4&&ln>-78&&ln<-70) return true;
+
+  if (lt>-4&&lt<6&&ln>-76&&ln<-50) return true;
+  if (lt>-4&&lt<2&&ln>-50&&ln<-44) return true;
+
+  if (lt>-10&&lt<-2&&ln>-68&&ln<-36) return true;
+  if (lt>-16&&lt<-8&&ln>-58&&ln<-34) return true;
+  if (lt>-20&&lt<-14&&ln>-56&&ln<-38) return true;
+  if (lt>-24&&lt<-18&&ln>-56&&ln<-40) return true;
+
+  if (lt>-22&&lt<-10&&ln>-68&&ln<-58) return true;
+
+  if (lt>-30&&lt<-22&&ln>-58&&ln<-46) return true;
+  if (lt>-34&&lt<-28&&ln>-58&&ln<-48) return true;
+
+  if (lt>-40&&lt<-28&&ln>-72&&ln<-58) return true;
+  if (lt>-46&&lt<-38&&ln>-72&&ln<-62) return true;
+
+  if (lt>-28&&lt<-18&&ln>-72&&ln<-68) return true;
+  if (lt>-42&&lt<-28&&ln>-74&&ln<-70) return true;
+  if (lt>-48&&lt<-40&&ln>-76&&ln<-70) return true;
+
+  if (lt>-52&&lt<-46&&ln>-76&&ln<-66) return true;
+  if (lt>-56&&lt<-52&&ln>-72&&ln<-66) return true;
+
+  // ── EUROPE ──
+  if (lt>63&&lt<67&&ln>-24&&ln<-14) return true;
+
+  if (lt>54&&lt<59&&ln>-8&&ln<0) return true;
+  if (lt>50&&lt<55&&ln>-6&&ln<2) return true;
+  if (lt>51&&lt<56&&ln>-11&&ln<-6) return true;
+
+  if (lt>40&&lt<44&&ln>-10&&ln<0) return true;
+  if (lt>36&&lt<42&&ln>-10&&ln<0) return true;
+  if (lt>36&&lt<44&&ln>0&&ln<4) return true;
+
+  if (lt>46&&lt<51&&ln>-4&&ln<8) return true;
+  if (lt>42&&lt<48&&ln>0&&ln<8) return true;
+
+  if (lt>50&&lt<54&&ln>2&&ln<8) return true;
+  if (lt>47&&lt<55&&ln>6&&ln<15) return true;
+
+  if (lt>54&&lt<58&&ln>8&&ln<13) return true;
+
+  if (lt>58&&lt<64&&ln>4&&ln<14) return true;
+  if (lt>64&&lt<68&&ln>10&&ln<18) return true;
+  if (lt>68&&lt<71&&ln>14&&ln<26) return true;
+
+  if (lt>56&&lt<62&&ln>12&&ln<20) return true;
+  if (lt>62&&lt<68&&ln>14&&ln<22) return true;
+
+  if (lt>60&&lt<64&&ln>22&&ln<30) return true;
+  if (lt>64&&lt<70&&ln>24&&ln<30) return true;
+
+  if (lt>54&&lt<60&&ln>20&&ln<28) return true;
+
+  if (lt>50&&lt<55&&ln>14&&ln<24) return true;
+
+  if (lt>46&&lt<52&&ln>10&&ln<22) return true;
+
+  if (lt>44&&lt<47&&ln>7&&ln<14) return true;
+  if (lt>42&&lt<44&&ln>10&&ln<16) return true;
+  if (lt>40&&lt<43&&ln>12&&ln<18) return true;
+  if (lt>38&&lt<41&&ln>14&&ln<17) return true;
+  if (lt>36&&lt<39&&ln>15&&ln<18) return true;
+  if (lt>36&&lt<39&&ln>12&&ln<16) return true;
+  if (lt>38&&lt<42&&ln>8&&ln<10) return true;
+  if (lt>41&&lt<43&&ln>8&&ln<10) return true;
+
+  if (lt>42&&lt<47&&ln>14&&ln<24) return true;
+  if (lt>40&&lt<44&&ln>18&&ln<28) return true;
+  if (lt>44&&lt<48&&ln>22&&ln<30) return true;
+
+  if (lt>38&&lt<42&&ln>20&&ln<26) return true;
+  if (lt>36&&lt<39&&ln>22&&ln<28) return true;
+  if (lt>34&&lt<36&&ln>23&&ln<27) return true;
+  if (lt>34&&lt<36&&ln>32&&ln<35) return true;
+
+  if (lt>48&&lt<52&&ln>22&&ln<40) return true;
+  if (lt>44&&lt<50&&ln>28&&ln<40) return true;
+
+  // ── RUSSIA ──
+  if (lt>55&&lt<62&&ln>28&&ln<60) return true;
+  if (lt>52&&lt<58&&ln>40&&ln<70) return true;
+  if (lt>50&&lt<56&&ln>50&&ln<90) return true;
+  if (lt>52&&lt<58&&ln>60&&ln<100) return true;
+  if (lt>54&&lt<60&&ln>80&&ln<120) return true;
+  if (lt>56&&lt<64&&ln>90&&ln<130) return true;
+  if (lt>60&&lt<68&&ln>100&&ln<170) return true;
+  if (lt>64&&lt<72&&ln>80&&ln<180) return true;
+  if (lt>68&&lt<74&&ln>60&&ln<180) return true;
+  if (lt>72&&lt<76&&ln>50&&ln<180) return true;
+  if (lt>50&&lt<62&&ln>155&&ln<165) return true;
+
+  // ── TURKEY ──
+  if (lt>36&&lt<42&&ln>26&&ln<44) return true;
+
+  // ── MIDDLE EAST ──
+  if (lt>30&&lt<38&&ln>34&&ln<48) return true;
+  if (lt>28&&lt<32&&ln>44&&ln<50) return true;
+
+  if (lt>22&&lt<30&&ln>34&&ln<40) return true;
+  if (lt>20&&lt<28&&ln>38&&ln<48) return true;
+  if (lt>16&&lt<24&&ln>42&&ln<56) return true;
+  if (lt>12&&lt<18&&ln>42&&ln<46) return true;
+  if (lt>22&&lt<26&&ln>50&&ln<56) return true;
+  if (lt>20&&lt<24&&ln>55&&ln<60) return true;
+
+  if (lt>32&&lt<40&&ln>44&&ln<64) return true;
+  if (lt>26&&lt<34&&ln>52&&ln<62) return true;
+  if (lt>24&&lt<28&&ln>56&&ln<62) return true;
+
+  if (lt>30&&lt<38&&ln>60&&ln<72) return true;
+  if (lt>24&&lt<32&&ln>62&&ln<72) return true;
+
+  // ── CENTRAL ASIA ──
+  if (lt>36&&lt<44&&ln>50&&ln<80) return true;
+  if (lt>40&&lt<50&&ln>52&&ln<82) return true;
+
+  // ── INDIA ──
+  if (lt>28&&lt<36&&ln>68&&ln<80) return true;
+  if (lt>22&&lt<30&&ln>68&&ln<90) return true;
+  if (lt>18&&lt<24&&ln>72&&ln<88) return true;
+  if (lt>14&&lt<20&&ln>74&&ln<84) return true;
+  if (lt>10&&lt<16&&ln>76&&ln<80) return true;
+  if (lt>8&&lt<12&&ln>76&&ln<80) return true;
+  if (lt>6&&lt<10&&ln>79&&ln<82) return true;
+
+  // ── CHINA / EAST ASIA ──
+  if (lt>42&&lt<52&&ln>88&&ln<120) return true;
+  if (lt>36&&lt<44&&ln>74&&ln<122) return true;
+  if (lt>28&&lt<38&&ln>98&&ln<122) return true;
+  if (lt>22&&lt<30&&ln>100&&ln<118) return true;
+  if (lt>20&&lt<24&&ln>106&&ln<112) return true;
+  if (lt>18&&lt<20&&ln>108&&ln<111) return true;
+  if (lt>28&&lt<36&&ln>78&&ln<100) return true;
+
+  if (lt>26&&lt<30&&ln>80&&ln<92) return true;
+  if (lt>20&&lt<26&&ln>88&&ln<93) return true;
+
+  if (lt>16&&lt<28&&ln>92&&ln<100) return true;
+  if (lt>10&&lt<18&&ln>96&&ln<100) return true;
+
+  if (lt>14&&lt<20&&ln>98&&ln<106) return true;
+  if (lt>6&&lt<16&&ln>98&&ln<104) return true;
+  if (lt>1&&lt<8&&ln>100&&ln<105) return true;
+
+  if (lt>8&&lt<14&&ln>104&&ln<110) return true;
+  if (lt>14&&lt<24&&ln>104&&ln<108) return true;
+
+  if (lt>34&&lt<44&&ln>124&&ln<130) return true;
+
+  if (lt>42&&lt<46&&ln>140&&ln<146) return true;
+  if (lt>36&&lt<42&&ln>138&&ln<142) return true;
+  if (lt>34&&lt<38&&ln>132&&ln<140) return true;
+  if (lt>32&&lt<36&&ln>130&&ln<136) return true;
+  if (lt>30&&lt<34&&ln>128&&ln<132) return true;
+
+  if (lt>22&&lt<26&&ln>120&&ln<122) return true;
+
+  if (lt>14&&lt<19&&ln>120&&ln<123) return true;
+  if (lt>8&&lt<14&&ln>122&&ln<126) return true;
+  if (lt>6&&lt<10&&ln>118&&ln<122) return true;
+
+  if (lt>2&&lt<6&&ln>95&&ln<100) return true;
+  if (lt>-2&&lt<4&&ln>98&&ln<106) return true;
+  if (lt>-6&&lt<0&&ln>102&&ln<106) return true;
+  if (lt>-8&&lt<-6&&ln>105&&ln<115) return true;
+  if (lt>-2&&lt<8&&ln>108&&ln<118) return true;
+  if (lt>-4&&lt<2&&ln>118&&ln<126) return true;
+  if (lt>-8&&lt<0&&ln>130&&ln<142) return true;
+  if (lt>-10&&lt<-4&&ln>140&&ln<150) return true;
+  if (lt>-10&&lt<-8&&ln>116&&ln<128) return true;
+
+  // ── AFRICA ──
+  if (lt>30&&lt<36&&ln>-10&&ln<0) return true;
+  if (lt>28&&lt<37&&ln>-2&&ln<10) return true;
+  if (lt>24&&lt<30&&ln>-2&&ln<10) return true;
+  if (lt>32&&lt<38&&ln>8&&ln<12) return true;
+  if (lt>26&&lt<34&&ln>10&&ln<24) return true;
+  if (lt>22&&lt<28&&ln>12&&ln<26) return true;
+  if (lt>22&&lt<32&&ln>24&&ln<36) return true;
+  if (lt>28&&lt<32&&ln>32&&ln<36) return true;
+
+  if (lt>18&&lt<28&&ln>-18&&ln<-2) return true;
+  if (lt>12&&lt<24&&ln>-18&&ln<16) return true;
+  if (lt>10&&lt<22&&ln>0&&ln<16) return true;
+  if (lt>8&&lt<16&&ln>14&&ln<24) return true;
+  if (lt>4&&lt<14&&ln>6&&ln<16) return true;
+
+  if (lt>4&&lt<8&&ln>-12&&ln<-4) return true;
+  if (lt>4&&lt<12&&ln>-18&&ln<-12) return true;
+  if (lt>8&&lt<16&&ln>-18&&ln<-8) return true;
+
+  if (lt>4&&lt<8&&ln>-8&&ln<6) return true;
+
+  if (lt>-6&&lt<6&&ln>10&&ln<32) return true;
+  if (lt>-2&&lt<6&&ln>8&&ln<14) return true;
+
+  if (lt>-2&&lt<6&&ln>28&&ln<42) return true;
+  if (lt>-6&&lt<0&&ln>28&&ln<40) return true;
+  if (lt>2&&lt<12&&ln>36&&ln<48) return true;
+  if (lt>6&&lt<14&&ln>42&&ln<52) return true;
+  if (lt>0&&lt<8&&ln>32&&ln<42) return true;
+  if (lt>4&&lt<16&&ln>34&&ln<42) return true;
+  if (lt>-8&&lt<2&&ln>34&&ln<42) return true;
+
+  if (lt>-18&&lt<-6&&ln>24&&ln<40) return true;
+  if (lt>-16&&lt<-8&&ln>14&&ln<26) return true;
+  if (lt>-22&&lt<-14&&ln>12&&ln<28) return true;
+  if (lt>-28&&lt<-20&&ln>14&&ln<34) return true;
+  if (lt>-32&&lt<-26&&ln>16&&ln<32) return true;
+  if (lt>-35&&lt<-30&&ln>18&&ln<30) return true;
+
+  if (lt>-14&&lt<-12&&ln>48&&ln<50) return true;
+  if (lt>-20&&lt<-12&&ln>44&&ln<50) return true;
+  if (lt>-24&&lt<-18&&ln>43&&ln<48) return true;
+  if (lt>-26&&lt<-22&&ln>44&&ln<48) return true;
+
+  // ── AUSTRALIA ──
+  if (lt>-18&&lt<-12&&ln>130&&ln<138) return true;
+  if (lt>-16&&lt<-10&&ln>124&&ln<132) return true;
+  if (lt>-20&&lt<-14&&ln>118&&ln<130) return true;
+  if (lt>-22&&lt<-16&&ln>114&&ln<138) return true;
+  if (lt>-28&&lt<-20&&ln>114&&ln<142) return true;
+  if (lt>-32&&lt<-26&&ln>114&&ln<148) return true;
+  if (lt>-36&&lt<-30&&ln>116&&ln<150) return true;
+  if (lt>-38&&lt<-34&&ln>136&&ln<150) return true;
+  if (lt>-40&&lt<-36&&ln>142&&ln<148) return true;
+  if (lt>-16&&lt<-10&&ln>142&&ln<146) return true;
+  if (lt>-28&&lt<-16&&ln>146&&ln<154) return true;
+  if (lt>-34&&lt<-26&&ln>148&&ln<154) return true;
+  if (lt>-44&&lt<-40&&ln>144&&ln<149) return true;
+
+  // ── NEW ZEALAND ──
+  if (lt>-38&&lt<-34&&ln>172&&ln<178) return true;
+  if (lt>-42&&lt<-38&&ln>174&&ln<178) return true;
+  if (lt>-42&&lt<-40&&ln>172&&ln<176) return true;
+  if (lt>-46&&lt<-42&&ln>166&&ln<172) return true;
+  if (lt>-48&&lt<-44&&ln>166&&ln<170) return true;
+
+  // ── ANTARCTICA ──
+  if (lt<-68) return true;
+
+  return false;
+}
+
+function toXYZ(lat, lng, R) {
+  const p = (90 - lat) * Math.PI / 180, t = (lng + 180) * Math.PI / 180;
+  return { x: -R * Math.sin(p) * Math.cos(t), y: -R * Math.cos(p), z: R * Math.sin(p) * Math.sin(t) };
+}
+
+function buildPts(step) {
+  const pts = [];
+  for (let lat = -80; lat <= 84; lat += step) {
+    const c = Math.cos(lat * Math.PI / 180);
+    const ls = step / Math.max(c, 0.2);
+    for (let lng = -180; lng < 180; lng += ls)
+      pts.push({ lat, lng, land: isLand(lat, lng), s: Math.random() });
+  }
+  return pts;
+}
+
+const LC = ["©","@","#","%","&","§","Ø","Æ","Ω","Σ","¤","Ξ","Ψ"];
+const GC = ["0","1","█","▓","▒","░","Δ","λ","π","∞","φ"];
+
+export default function Globe() {
+  const cvRef = useRef(null);
+  const afRef = useRef(null);
+  const ptRef = useRef(null);
+  const rRef = useRef(0);
+  const tiltRef = useRef(0.4);
+  const tRef = useRef(0);
+  const dragRef = useRef({ active: false, lx: 0, ly: 0 });
+  const autoRef = useRef(true);
+  const resumeTimer = useRef(null);
+
+  const [speed, setSpeed] = useState(4);
+  const [glitch, setGlitch] = useState(3);
+  const [rain, setRain] = useState(true);
+
+  if (!ptRef.current) ptRef.current = buildPts(2.0);
+
+  const draw = useCallback(() => {
+    const cv = cvRef.current;
+    if (!cv) return;
+    const c = cv.getContext("2d");
+    const d = window.devicePixelRatio || 1;
+    const r = cv.getBoundingClientRect();
+    cv.width = r.width * d; cv.height = r.height * d;
+    c.scale(d, d);
+
+    const W = r.width, H = r.height, cx = W / 2, cy = H / 2;
+    const R = Math.min(W, H) * 0.38;
+
+    tRef.current++;
+    const t = tRef.current;
+
+    c.fillStyle = "#060a06";
+    c.fillRect(0, 0, W, H);
+
+    c.fillStyle = "rgba(0,0,0,0.04)";
+    for (let y = 0; y < H; y += 3) c.fillRect(0, y, W, 1);
+
+    const g = c.createRadialGradient(cx, cy, R * 0.1, cx, cy, R * 1.5);
+    g.addColorStop(0, "rgba(0,255,60,0.04)"); g.addColorStop(1, "rgba(0,0,0,0)");
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+
+    if (autoRef.current) rRef.current += speed / 1000;
+
+    const ry = rRef.current, rx = tiltRef.current;
+    const cY = Math.cos(ry), sY = Math.sin(ry);
+    const cX = Math.cos(rx), sX = Math.sin(rx);
+
+    const pts = ptRef.current;
+    const vis = [];
+    for (let i = 0; i < pts.length; i++) {
+      if (!pts[i].land) continue;
+      const p = toXYZ(pts[i].lat, pts[i].lng, R);
+      const x1 = p.x * cY - p.z * sY;
+      const z1 = p.x * sY + p.z * cY;
+      const y2 = p.y * cX - z1 * sX;
+      const z2 = p.y * sX + z1 * cX;
+      if (z2 < -R * 0.03) continue;
+      vis.push({ sx: cx + x1, sy: cy + y2, z: z2, dp: (z2 + R) / (2 * R), s: pts[i].s });
+    }
+    vis.sort((a, b) => a.z - b.z);
+
+    const fs = Math.max(6, R / 28);
+    c.textAlign = "center"; c.textBaseline = "middle";
+    const gt = 1 - (glitch / 10) * 0.18;
+
+    for (const dot of vis) {
+      const a = 0.1 + dot.dp * 0.9;
+      const gl = Math.sin(dot.s * 1000 + t * 0.05) > gt;
+      let ch, cr, cg, cb;
+      if (gl) {
+        ch = GC[Math.floor((dot.s * 100 + t * 0.12) % GC.length)];
+        cr = 60; cg = 255; cb = 100;
+      } else {
+        ch = LC[Math.floor(dot.s * LC.length + t * 0.005) % LC.length];
+        cr = 160 + dot.dp * 90; cg = 220 + dot.dp * 35; cb = 160 + dot.dp * 60;
+      }
+      const sz = fs * (0.5 + dot.dp * 0.55);
+      c.font = `bold ${sz}px "Courier New","Lucida Console",monospace`;
+      c.fillStyle = `rgba(${Math.round(cr)},${Math.round(cg)},${Math.round(cb)},${a})`;
+      if (dot.dp > 0.45) { c.shadowColor = `rgba(0,255,50,${a * 0.25})`; c.shadowBlur = 3; }
+      c.fillText(ch, dot.sx, dot.sy);
+      c.shadowColor = "transparent"; c.shadowBlur = 0;
+    }
+
+    if (rain) {
+      if (!cv._rn) {
+        cv._rn = [];
+        for (let i = 0; i < 25; i++) {
+          const col = { x: Math.random()*2000, y: Math.random()*2000,
+            sp: 0.3+Math.random()*1.4, ln: 3+Math.floor(Math.random()*10), ch: [] };
+          for (let j = 0; j < col.ln; j++) col.ch.push(GC[Math.floor(Math.random()*GC.length)]);
+          cv._rn.push(col);
+        }
+      }
+      c.font = `9px "Courier New",monospace`;
+      for (const col of cv._rn) {
+        const rx2 = col.x % W;
+        col.y = (col.y + col.sp) % (H + col.ln * 10);
+        for (let j = 0; j < col.ln; j++) {
+          const ry2 = col.y - j * 10;
+          if (ry2 < 0 || ry2 > H) continue;
+          const dx = rx2 - cx, dy = ry2 - cy;
+          if (dx * dx + dy * dy < R * R * 1.1) continue;
+          const fa = (1 - j / col.ln) * 0.16;
+          c.fillStyle = j === 0 ? `rgba(120,255,160,${fa+0.1})` : `rgba(0,200,60,${fa})`;
+          if (Math.random() > 0.97) col.ch[j] = GC[Math.floor(Math.random()*GC.length)];
+          c.fillText(col.ch[j], rx2, ry2);
+        }
+      }
+    }
+
+    const v = c.createRadialGradient(cx, cy, R * 0.5, cx, cy, Math.max(W, H) * 0.78);
+    v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,0.55)");
+    c.fillStyle = v; c.fillRect(0, 0, W, H);
+    if (Math.random() > 0.97) { c.fillStyle = `rgba(0,255,60,${Math.random()*0.01})`; c.fillRect(0, 0, W, H); }
+
+    afRef.current = requestAnimationFrame(draw);
+  }, [speed, glitch, rain]);
+
+  useEffect(() => {
+    afRef.current = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(afRef.current);
+  }, [draw]);
+
+  const getPos = (e) => e.touches ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : { x: e.clientX, y: e.clientY };
+  const onDown = (e) => {
+    e.preventDefault();
+    const p = getPos(e);
+    dragRef.current = { active: true, lx: p.x, ly: p.y };
+    autoRef.current = false;
+    if (resumeTimer.current) clearTimeout(resumeTimer.current);
+  };
+  const onMove = (e) => {
+    if (!dragRef.current.active) return;
+    const p = getPos(e);
+    rRef.current -= (p.x - dragRef.current.lx) * 0.004;
+    tiltRef.current = Math.max(-1.2, Math.min(1.2, tiltRef.current - (p.y - dragRef.current.ly) * 0.004));
+    dragRef.current.lx = p.x; dragRef.current.ly = p.y;
+  };
+  const onUp = () => {
+    dragRef.current.active = false;
+    resumeTimer.current = setTimeout(() => { autoRef.current = true; }, 2000);
+  };
+
+  const now = new Date();
+  const utc = now.toISOString().replace("T"," ").slice(0,19);
+  const deg = ((rRef.current*180/Math.PI)%360).toFixed(1);
+  const fLng = ((-rRef.current*180/Math.PI)%360+360)%360;
+  const fStr = fLng>180?(fLng-360).toFixed(1)+"°W":fLng.toFixed(1)+"°E";
+  const dayProg = ((now.getUTCHours()*60+now.getUTCMinutes())/1440*100).toFixed(1);
+
+  const cs = { display:"flex", alignItems:"center", gap:6, fontSize:10, color:"rgba(0,220,80,0.55)" };
+
+  return (
+    <div style={{ width:"100%", height:"100vh", background:"#060a06", position:"relative",
+      overflow:"hidden", userSelect:"none", fontFamily:"'Courier New','Lucida Console',monospace" }}>
+      <canvas ref={cvRef} style={{ width:"100%", height:"100%", display:"block", cursor:"grab" }}
+        onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
+        onTouchStart={onDown} onTouchMove={onMove} onTouchEnd={onUp} />
+
+      <div style={{ position:"absolute", top:14, right:16, fontSize:9,
+        color:"rgba(0,220,80,0.4)", lineHeight:1.8, letterSpacing:"0.08em",
+        textAlign:"right", pointerEvents:"none" }}>
+        <span style={{ color:"rgba(0,255,80,0.6)" }}>SYS.EARTH</span> v4.0<br/>
+        MODE: ASCII_MATRIX<br/>
+        <span style={{ color:"rgba(0,255,80,0.6)" }}>● LIVE</span> ROTATING<br/>
+        ──────────────<br/>
+        AXIAL TILT: {(tiltRef.current*180/Math.PI).toFixed(1)}°<br/>
+        ROTATION: {deg}°<br/>
+        FACING: {fStr}<br/>
+        ──────────────<br/>
+        {utc} UTC<br/>
+        DAY PROGRESS: {dayProg}%<br/>
+        CIRCUMF: 40,075 km<br/>
+        MASS: 5.972×10²⁴ kg
+      </div>
+
+      <div style={{ position:"absolute", bottom:14, left:14,
+        background:"rgba(0,12,4,0.8)", backdropFilter:"blur(8px)",
+        border:"1px solid rgba(0,200,60,0.12)", borderRadius:4,
+        padding:"8px 12px", display:"flex", flexDirection:"column", gap:5 }}>
+        <div style={{ fontSize:8, color:"rgba(0,220,80,0.3)", letterSpacing:"0.14em", marginBottom:1 }}>▸ CONTROLS</div>
+        <div style={cs}>
+          <span style={{ width:44, textAlign:"right" }}>SPEED</span>
+          <input type="range" min="0" max="20" step="1" value={speed}
+            onChange={e=>setSpeed(+e.target.value)} style={{ width:56, accentColor:"#00cc44", height:2 }}/>
+          <span style={{ opacity:0.4, width:16, fontSize:9 }}>{speed}</span>
+        </div>
+        <div style={cs}>
+          <span style={{ width:44, textAlign:"right" }}>GLITCH</span>
+          <input type="range" min="0" max="10" step="1" value={glitch}
+            onChange={e=>setGlitch(+e.target.value)} style={{ width:56, accentColor:"#00cc44", height:2 }}/>
+          <span style={{ opacity:0.4, width:16, fontSize:9 }}>{glitch}</span>
+        </div>
+        <div style={cs}>
+          <span style={{ width:44, textAlign:"right" }}>RAIN</span>
+          <input type="checkbox" checked={rain} onChange={e=>setRain(e.target.checked)}
+            style={{ accentColor:"#00cc44" }}/>
+        </div>
+      </div>
+    </div>
+  );
+}
